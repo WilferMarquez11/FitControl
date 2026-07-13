@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function RecoverScreen() {
+export default function PanelTrainerScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Hola, esto es Recuperar contraseña</Text>
+      <Text style={styles.text}>Hola, esto es Panel del Entrenador</Text>
     </View>
   );
 }
