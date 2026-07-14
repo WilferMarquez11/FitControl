@@ -7,8 +7,9 @@ import CustomButton from '../../components/auth/CustomButton';
 import Separator from '../../components/common/Separator';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AuthLogo from '../../components/auth/AuthLogo';
+
 import { authService } from '../../services/authService';
-import { getUserProfile } from '../../services/userService';
+import { userService } from '../../services/userService';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
