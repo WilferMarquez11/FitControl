@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/LogoIcon.png",
     "userInterfaceStyle": "light",
+    "scheme": "fitcontrol",
     "ios": {
       "supportsTablet": true
     },
@@ -22,7 +23,8 @@
     },
     "plugins": [
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ]
   }
 }

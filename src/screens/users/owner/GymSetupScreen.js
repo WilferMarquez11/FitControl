@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { palette } from '../../../theme/colors';
-import { supabase } from '../../../lib/supabase/supabaseConfig';
+
+// Importación de servicios y del JSON dinámico en assets
+import { gymService } from '../../../services/gymService';
+import { authService } from '../../../services/authService';
+import colombiaData from '../../../../assets/data/colombia.json';
+
+import { formatToMiles, parseToRawNumber } from '../../../utils/currencyFormatter';
 
 import FormInput from '../../../components/forms/FormInput';
 import FormPicker from '../../../components/forms/FormPicker.js';
@@ -12,77 +18,116 @@ import CurrencyInput from '../../../components/forms/CurrencyInput';
 import FormImagePicker from '../../../components/forms/FormImagePicker';
 import LoadingOverlay from '../../../components/common/LoadingOverlay';
 
-export default function GymSetupScreen({ navigation, session }) {
-  const [gymName, setGymName] = useState('');
-  const [country, setCountry] = useState('');
+
+
+export default function GymSetupScreen({ navigation, route }) {
+  // Extraemos el ID del usuario enviado desde la pantalla de Register
+  const { userId } = route.params || {};
+
+  // 🚨 Añade este log temporal para depurar en tu terminal de Expo:
+  console.log("=== USER ID RECIBIDO EN GYM SETUP ===", userId);
+
+  // Estados locales nombrados exactamente igual que las columnas de tu base de datos
+  const [gym_name, setGymName] = useState('');
+  const [country, setCountry] = useState('Colombia');
   const [state, setState] = useState('');
   const [city, setCity] = useState('');
-  const [routinePrice, setRoutinePrice] = useState('');
+  const [routine_price, setRoutinePrice] = useState('');
   const [address, setAddress] = useState('');
-  const [logoUri, setLogoUri] = useState(null);
+  const [logo_uri, setLogoUri] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Controladores de listas dinámicas para Colombia
+  const [departmentsList, setDepartmentsList] = useState([]);
+  const [citiesList, setCitiesList] = useState([]); 
+
+    // Carga inicial de departamentos al abrir la pantalla
+  useEffect(() => {
+    const mappedDepartments = colombiaData.map((dept) => ({
+      label: dept.departamento,
+      value: dept.departamento,
+    }));
+    mappedDepartments.sort((a, b) => a.label.localeCompare(b.label));
+    setDepartmentsList(mappedDepartments);
+  }, []);
+
+  // Filtrado automático de ciudades al cambiar de departamento
+  useEffect(() => {
+    if (!state) {
+      setCitiesList([]);
+      setCity('');
+      return;
+    }
+
+    const foundDept = colombiaData.find((dept) => dept.departamento === state);
+
+    if (foundDept && foundDept.ciudades) {
+      const mappedCities = foundDept.ciudades.map((ciudad) => ({
+        label: ciudad,
+        value: ciudad,
+      }));
+      mappedCities.sort((a, b) => a.label.localeCompare(b.label));
+      setCitiesList(mappedCities);
+    } else {
+      setCitiesList([]);
+    }
+    setCity('');
+  }, [state]);
+
+  /**
+   * PROCESO DE GUARDADO Y REDIRECCIÓN
+   */
   const handleCreateGym = async () => {
-    if (!gymName || !country || !state || !city || !routinePrice || !address) {
-      Alert.alert('Faltan datos', 'Por favor completa todos los campos requeridos.');
+    // 💡 Limpiamos espacios antes de validar
+    const cleanedGymName = gym_name.trim();
+
+    // 🚨 Convertimos el string formateado "20.000" a número limpio para la BD: 20000
+    const rawPrice = parseToRawNumber(routine_price);
+
+    // Validamos los campos obligatorios usando las variables ya limpias
+    if (!cleanedGymName || !country || !state || !city || rawPrice <= 0) {
+      Alert.alert('⚠️ Campos incompletos', 'Por favor completa todos los campos requeridos (*) y define un precio de rutina válido.');
       return;
     }
 
     setLoading(true);
     try {
-      let logoUrl = null;
+      // Mandamos las variables directo al servicio (el servicio se encargará del ArrayBuffer y del Storage)
+      await gymService.createGymAndLinkUser({
+        userId,
+        gym_name: cleanedGymName,
+        country,
+        state,
+        city,
+        routine_price: rawPrice, // 🚨 Pasamos el número limpio (Float/Int)
+        // 🚨 Enviamos la dirección formateada de forma segura (si no hay, mandamos null)
+        address: address ? address.trim() : null,
+        logo_uri, // El URI de la imagen seleccionada temporalmente
+      });
 
-      // Si el usuario seleccionó un logo, se sube antes de crear el gym
-      if (logoUri) {
-        const fileExt = logoUri.split('.').pop();
-        const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
-        const response = await fetch(logoUri);
-        const blob = await response.blob();
-
-        const { error: uploadError } = await supabase.storage
-          .from('gym-logos')
-          .upload(fileName, blob, { contentType: `image/${fileExt}` });
-
-        if (uploadError) throw uploadError;
-
-        const { data: publicUrlData } = supabase.storage
-          .from('gym-logos')
-          .getPublicUrl(fileName);
-
-        logoUrl = publicUrlData.publicUrl;
-      }
-
-      // 1. Crear el gimnasio
-      const { data: gym, error: gymError } = await supabase
-        .from('gyms')
-        .insert({
-          gym_name: gymName,
-          country,
-          state,
-          city,
-          routine_price: parseFloat(routinePrice),
-          address,
-          logo_url: logoUrl,
-          created_by: session.user.id,
-        })
-        .select()
-        .single();
-
-      if (gymError) throw gymError;
-
-      // 2. Vincular el gym al usuario (ya existe por el trigger de auth)
-      const { error: userError } = await supabase
-        .from('users')
-        .update({ gym_id: gym.id })
-        .eq('id', session.user.id);
-
-      if (userError) throw userError;
-
-      // La navegación al Home la maneja tu RootNavigator al detectar gym_id
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    } finally {
       setLoading(false);
+
+      // Alerta de éxito con su respectivo emoji
+      Alert.alert('🎉 ¡Gimnasio creado!', 'Tu gimnasio se ha registrado exitosamente.');
+
+      navigation.replace('PanelOwner');
+
+    } catch (error) {
+      setLoading(false);
+      Alert.alert('❌ Error', error.message || 'Ocurrió un error inesperado al registrar el gimnasio.');
+    }
+  };
+
+  /**
+   * CANCELAR ACCIÓN
+   */
+  const handleSignOut = async () => {
+    try {
+      await authService.logout();
+      // Redirigimos al usuario a la pantalla de Login tras cerrar sesión
+      navigation.replace('Login');
+    } catch (error) {
+      Alert.alert('❌ Error', 'Ocurrió un fallo al intentar cerrar la sesión.');
     }
   };
 
@@ -106,24 +151,22 @@ export default function GymSetupScreen({ navigation, session }) {
         enableOnAndroid={true}
         extraScrollHeight={20}
       >
-        {/* Logo es un componente */}
         <FormImagePicker
           label="Logo del gimnasio"
           optional
-          value={logoUri}
+          value={logo_uri}
           onChange={setLogoUri}
         />
 
-        {/* Nombre del gimnasio es un componente */}
         <FormInput
           label="Nombre del gimnasio"
           required
-          placeholder="Ejemplo: FitControl Gym"
-          value={gymName}
-          onChangeText={setGymName}
+          placeholder="Ejemplo: FITCONTROL GYM"
+          value={gym_name}
+          onChangeText={(text) => setGymName(text.toUpperCase())} // Fuerza el estado de React a mayúsculas
+          autoCapitalize="characters" // 🚨 ¡Fuerza el TECLADO del celular en mayúsculas fijas!
         />
 
-        {/* País es un componente */}
         <FormPicker
           label="País"
           required
@@ -131,66 +174,55 @@ export default function GymSetupScreen({ navigation, session }) {
           onChange={setCountry}
           placeholder="Seleccionar país..."
           items={[{ label: 'Colombia', value: 'Colombia' }]}
+          disabled={true}
         />
 
-        {/* Departamento es un componente */}
         <FormPicker
           label="Departamento"
           required
           value={state}
           onChange={setState}
           placeholder="Seleccionar departamento..."
-          items={[
-            { label: 'Antioquia', value: 'Antioquia' },
-            { label: 'Cundinamarca', value: 'Cundinamarca' },
-            { label: 'Valle del Cauca', value: 'Valle del Cauca' },
-          ]}
+          items={departmentsList}
         />
 
-        {/* Ciudad es un componente */}
         <FormPicker
           label="Ciudad"
           required
           value={city}
           onChange={setCity}
-          placeholder="Seleccionar ciudad..."
-          items={[
-            { label: 'Medellín', value: 'Medellín' },
-            { label: 'Bogotá', value: 'Bogotá' },
-            { label: 'Cali', value: 'Cali' },
-          ]}
+          placeholder={state ? "Seleccionar ciudad..." : "Primero selecciona un departamento"}
+          items={citiesList}
+          disabled={citiesList.length === 0}
         />
 
-        {/* Precio rutina diaria es un componente */}
+        {/* 🚨 Usamos el CurrencyInput con el formateador de miles en tiempo real */}
         <CurrencyInput
           label="Precio de la rutina diaria"
           required
           placeholder="0"
-          value={routinePrice}
-          onChangeText={(text) => setRoutinePrice(text.replace(/[^0-9]/g, ''))}
+          value={routine_price}
+          onChangeText={(text) => setRoutinePrice(formatToMiles(text))}
         />
 
-        {/* Dirección es un componente */}
         <FormInput
           label="Dirección"
-          required
-          placeholder="Ejemplo: Cra 45 #23-10"
+          optional
+          placeholder="Ejemplo: Cra 45 #23-10 (Opcional)"
           value={address}
           onChangeText={setAddress}
         />
 
-        {/* Botones es un componente */}
         <FormButtons
           onSave={handleCreateGym}
-          onCancel={() => supabase.auth.signOut()}
+          onCancel={handleSignOut}
           saveText="Crear gimnasio"
-          cancelText="Cerrar sesión"
+          cancelText="Salir"
         />
 
         <View style={{ height: 120 }} />
       </KeyboardAwareScrollView>
 
-      {/* Overlay de carga mientras se crea el gym */}
       <LoadingOverlay visible={loading} message="Creando tu gimnasio, por favor espera..." />
     </View>
   );

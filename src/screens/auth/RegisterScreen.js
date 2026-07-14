@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, Alert } from 'react-native'; // 👈 Añadimos Alert
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { palette } from '../../theme/colors';
 import CustomAuthInput from '../../components/auth/CustomAuthInput';
 import CustomButton from '../../components/auth/CustomButton';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AuthLogo from '../../components/auth/AuthLogo';
+import { authService } from '../../services/authService'; // 👈 Importamos tu servicio de Supabase
 
 export default function RegisterScreen({ navigation }) {
   const [nombre, setNombre] = useState('');
@@ -15,18 +16,56 @@ export default function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (password !== confirmPassword) {
-      // Aquí luego puedes mostrar un mensaje de error real (Alert, Toast, etc.)
-      console.log('Las contraseñas no coinciden');
+    // 1. Validaciones básicas iniciales
+    if (!nombre || !email || !password || !confirmPassword) {
+      Alert.alert('⚠️ Campos incompletos', 'Por favor llena todos los campos requeridos para crear tu cuenta.');
       return;
     }
 
-     setLoading(true);
-  setTimeout(() => {
-    setLoading(false);
-    navigation.navigate('GymSetup'); // 👈 solo para ver la pantalla
-  }, 1500);
-};
+    if (password !== confirmPassword) {
+      Alert.alert('🔒 Contraseñas no coinciden', 'La contraseña y la confirmación deben ser exactamente iguales.');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('🛡️ Contraseña débil', 'Por seguridad, la contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    // 2. Conexión con Supabase Auth
+    setLoading(true);
+    try {
+      // 🚨 CAMBIO CLAVE: Cambia registerOwnerAuthOnly por registerOwner
+      const data = await authService.registerOwner(email, password, nombre);
+
+      setLoading(false);
+
+      if (data && data.user) {
+        navigation.navigate('GymSetup', {
+          userId: data.user.id,
+          email: data.user.email,
+          fullName: nombre
+        });
+      } else {
+        throw new Error('No se pudo recuperar la información del usuario creado.');
+      }
+
+    } catch (error) {
+
+      setLoading(false);
+      
+      // Traducimos el error común de usuario existente si Supabase lo arroja
+      let mensajeAmigable = error.message;
+      let tituloAlerta = '❌ Error al registrar';
+
+      if (error.message.includes('User already registered')) {
+        tituloAlerta = '📧 Correo registrado';
+        mensajeAmigable = 'Este correo electrónico ya está asociado a otra cuenta. Intenta iniciar sesión.';
+      }
+
+      Alert.alert(tituloAlerta, mensajeAmigable);
+    }
+  };
 
   return (
     <KeyboardAwareScrollView
@@ -37,7 +76,6 @@ export default function RegisterScreen({ navigation }) {
       enableOnAndroid={true}
       extraScrollHeight={20}
     >
-      {/* Logo es un componente */}
       <AuthLogo />
 
       <Text style={styles.subtitle}>¡Crea tu cuenta ahora mismo!</Text>
@@ -83,7 +121,7 @@ export default function RegisterScreen({ navigation }) {
         onChangeText={(text) => setConfirmPassword(text.replace(/\s/g, ''))}
       />
 
-      {/* Botón Crear Cuenta (Primario usando tu componente personalizado) */}
+      {/* Botón Crear Cuenta */}
       <CustomButton
         title="Crear Cuenta"
         onPress={handleRegister}
@@ -98,7 +136,7 @@ export default function RegisterScreen({ navigation }) {
         <Text style={styles.linkLogin}>Volver al Inicio de Sesión</Text>
       </TouchableOpacity>
 
-      {/* Overlay de carga mientras se crea la cuenta */}
+      {/* Overlay de carga */}
       <LoadingOverlay visible={loading} message="Creando tu cuenta, por favor espera..." />
     </KeyboardAwareScrollView>
   );
@@ -115,11 +153,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 25,
     paddingVertical: 40,
-  },
-  logo: {
-    width: '100%',
-    height: 150,
-    marginBottom: 10,
   },
   subtitle: {
     fontSize: 22,

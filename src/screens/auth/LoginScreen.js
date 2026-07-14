@@ -1,39 +1,80 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { palette } from '../../theme/colors';
 import CustomAuthInput from '../../components/auth/CustomAuthInput';
 import CustomButton from '../../components/auth/CustomButton';
-import GoogleButton from '../../components/auth/GoogleButton';
 import Separator from '../../components/common/Separator';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AuthLogo from '../../components/auth/AuthLogo';
+import { authService } from '../../services/authService';
+import { getUserProfile } from '../../services/userService';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingLogin, setLoadingLogin] = useState(false);
+  const [loadingRegister, setLoadingRegister] = useState(false);
 
-  const handleLogin = () => {
-    // Aquí luego: supabase.auth.signInWithPassword({ email, password })
-    setLoading(true);
-    console.log('Login con:', email, password);
-    setLoading(false);
+  const handleLogin = async () => {
+    // 1. Validaciones básicas antes de enviar datos a Supabase
+    if (!email.trim() || !password) {
+      Alert.alert('⚠️ Campos incompletos', 'Por favor ingresa tu correo y contraseña para continuar.');
+      return;
+    }
+
+    setLoadingLogin(true);
+    try {
+      // 2. Intentamos iniciar sesión en Supabase Auth
+      const data = await authService.login(email.trim().toLowerCase(), password);
+
+      if (data && data.user) {
+        // 3. Si el login es exitoso, buscamos el perfil del usuario
+        const profile = await userService.getUserProfile(data.user.id);
+
+        if (!profile) {
+          throw new Error('No se encontró el perfil de usuario en el sistema.');
+        }
+
+        // 4. Redirección inteligente según el rol
+        if (profile.role === 'Propietario') {
+          if (!profile.gym_id) {
+            navigation.replace('GymSetup', { userId: data.user.id });
+          } else {
+            navigation.replace('PanelOwner');
+          }
+        } else if (profile.role === 'Entrenador') {
+          navigation.replace('PanelTrainer');
+        } else {
+          Alert.alert('🚫 Rol no autorizado', 'Tu cuenta no tiene los permisos necesarios para acceder a esta aplicación.');
+        }
+      }
+    } catch (error) {
+      // Traducimos el error común de credenciales de Supabase
+      let mensajeAmigable = error.message;
+      let tituloAlerta = '❌ Error al iniciar sesión';
+
+      if (error.message.includes('Invalid login credentials')) {
+        tituloAlerta = '🔑 Datos incorrectos';
+        mensajeAmigable = 'El correo o la contraseña no coinciden. Por favor, verifica e intenta de nuevo.';
+      }
+
+      Alert.alert(tituloAlerta, mensajeAmigable);
+    } finally {
+      setLoadingLogin(false);
+    }
   };
 
-  const handleGoogleLogin = () => {
-    // Aquí luego: supabase.auth.signInWithOAuth({ provider: 'google' })
-    console.log('Login con Google');
-  };
-
-   // 👇 Solo para PROBAR el LoadingOverlay mientras Register no esté listo
+  // 👇 Solo para PROBAR el LoadingOverlay mientras Register no esté listo
   const handleGoToRegister = () => {
-    setLoading(true);
+    setLoadingRegister(true);
     setTimeout(() => {
-      setLoading(false);
+      setLoadingRegister(false);
       navigation.navigate('Register');
     }, 2000); // simula 2 segundos de "carga"
   };
+
+  const isLoading = loadingLogin || loadingRegister;
 
   return (
     <KeyboardAwareScrollView
@@ -48,9 +89,6 @@ export default function LoginScreen({ navigation }) {
       <AuthLogo />
 
       <Text style={styles.subtitle}>¡Ingresa ahora mismo!</Text>
-
-      {/* Botón Google es un componente */}
-      <GoogleButton onPress={handleGoogleLogin} />
 
       {/* Separador es un componente */}
       <Separator icon="account-key" />
@@ -83,38 +121,28 @@ export default function LoginScreen({ navigation }) {
         title="Iniciar Sesión"
         onPress={handleLogin}
         variant="primary"
-        loading={loading}
+        loading={loadingLogin}
         marginTop={12}
         marginBottom={14}
       />
-   {/* 👇 Ahora usa handleGoToRegister para poder ver el loading */}
+
+      {/* Botón Crear Cuenta es un componente */}
       <CustomButton
         title="Crear Cuenta"
         onPress={handleGoToRegister}
         variant="secondary"
-         loading={loading}
+        loading={loadingRegister}
         marginTop={0}
         marginBottom={20}
       />
-
-      {/* Botón Crear Cuenta es un componente 
-      <CustomButton
-        title="Crear Cuenta"
-        onPress={() => navigation.navigate('Registrar')}
-        variant="secondary"
-        marginTop={0}
-        marginBottom={20}
-      />
-      */}
 
       {/* Olvidé contraseña */}
       <TouchableOpacity onPress={() => navigation.navigate('Recover')} activeOpacity={0.6}>
         <Text style={styles.forgotPassword}>Olvidé mi contraseña</Text>
       </TouchableOpacity>
 
-      {/* Overlay de carga - se ve al presionar "Crear Cuenta" */}
-      <LoadingOverlay visible={loading} message="Un momento, por favor espera..." />
-
+      {/* Overlay de carga */}
+      <LoadingOverlay visible={isLoading} message="Un momento, por favor espera..." />
     </KeyboardAwareScrollView>
   );
 }
@@ -131,28 +159,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     paddingVertical: 20,
   },
-
   subtitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: palette.darkBlue,
     marginBottom: 20,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    marginVertical: 18,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: palette.lightGray,
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-    color: palette.mediumGray,
   },
   hint: {
     fontSize: 12,
