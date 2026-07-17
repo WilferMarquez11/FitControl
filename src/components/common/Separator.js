@@ -1,15 +1,20 @@
-// Separator
-// Línea divisoria reutilizable con un texto o ícono en el centro (ej. "O" entre
-// "Continuar con Google" y los inputs de correo/contraseña en Login).
+// src/components/common/Separator.js
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { palette } from '../../theme/colors';
 
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../theme/ThemeContext';
+
 export default function Separator({ text, icon }) {
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
+
   return (
     <View style={styles.container}>
-      <View style={styles.line} />
+      {/* Línea izquierda adaptable */}
+      <View style={[styles.line, { backgroundColor: palette.lightGray }]} />
 
       {icon ? (
         <MaterialCommunityIcons
@@ -19,10 +24,12 @@ export default function Separator({ text, icon }) {
           style={styles.content}
         />
       ) : (
-        <Text style={styles.text}>{text}</Text>
+        /* Texto central adaptable */
+        <Text style={[styles.text, { color: tema.subTextColor }]}>{text}</Text>
       )}
 
-      <View style={styles.line} />
+      {/* Línea derecha adaptable */}
+      <View style={[styles.line, { backgroundColor: palette.lightGray }]} />
     </View>
   );
 }
@@ -37,7 +44,6 @@ const styles = StyleSheet.create({
   line: {
     flex: 1,
     height: 1,
-    backgroundColor: palette.lightGray,
   },
   content: {
     marginHorizontal: 10,
@@ -45,6 +51,5 @@ const styles = StyleSheet.create({
   text: {
     marginHorizontal: 10,
     fontSize: 14,
-    color: palette.mediumGray,
   },
 });

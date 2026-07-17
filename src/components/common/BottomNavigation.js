@@ -5,34 +5,50 @@ import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons"; 
 import { palette } from "../../theme/colors"; // Ajusta la ruta a tu paleta de colores
 
+// 🌟 Importamos el hook del tema
+import { useTheme } from "../../theme/ThemeContext";
+
 export default function BottomNavigation({ navigation, tabActiva }) {
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
 
   // 🏋️‍♂️ Íconos y rutas totalmente adaptados para la gestión de un Gimnasio
   const navItems = [
     {
       icon: "home",
-      screen: "PanelOwner", // Pantalla principal (Métricas rápidas, dashboard)
+      screen: "PanelOwner", // 1. Inicio (Panel principal)
     },
     {
       icon: "account-group",
-      screen: "GestionClientes", // Gestión de Clientes (Inscripciones, asistencia)
+      screen: "Clients", // 2. Gestión de Clientes
     },
     {
       icon: "card-account-details-star",
-      screen: "GestionMembresias", // Gestión de Planes y Membresías
+      screen: "Memberships", // 3. Gestión de Membresías
     },
     {
-      icon: "account-tie", 
-      screen: "GestionEntrenadores", // Gestión de Entrenadores / Staff
+      icon: "currency-usd", 
+      screen: "Payments", // 4. Pagos (Registros y abonos)
     },
     {
-      icon: "cog",
-      screen: "ConfiguracionGym", // Ajustes del Gimnasio (Horarios, perfil, etc.)
+      icon: "calendar-check", 
+      screen: "Attendances", // 5. Asistencias (Asistencias diarias)
+    },
+    {
+      icon: "apps", 
+      screen: "MoreServices", // 6. Más Servicios (Cuadritos)
     },
   ];
 
   return (
-    <View style={styles.bottomNav}>
+    <View style={[
+      styles.bottomNav, 
+      { 
+        backgroundColor: tema.cardBackground, 
+        borderColor: tema.borderColor,
+        borderWidth: tema.borderColor ? 1 : 0 // Añade borde sutil para que resalte flotando en oscuro
+      }
+    ]}>
       {navItems.map((item) => {
         const isActiva = tabActiva === item.screen;
         return (
@@ -45,11 +61,9 @@ export default function BottomNavigation({ navigation, tabActiva }) {
             <MaterialCommunityIcons
               name={item.icon}
               size={26}
-              // 🚨 Usamos tus colores de palette (darkBlue para activo, mediumGray para inactivo)
-              color={isActiva ? palette.darkBlue : palette.mediumGray}
+              // 🚨 Activo usa darkYellow, inactivo usa el color de texto secundario del tema actual
+              color={isActiva ? palette.darkYellow : tema.subTextColor}
             />
-            {/* Pequeño punto indicador debajo del ícono activo para dar un toque premium */}
-            {isActiva && <View style={styles.activeDot} />}
           </TouchableOpacity>
         );
       })}
@@ -62,16 +76,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    paddingVertical: 10,
-    backgroundColor: palette.white,
+    paddingVertical: 12, // Subimos ligeramente el padding para que respire mejor sin el punto
     borderRadius: 18,
     position: "absolute",
-    bottom: 30, // 🚨 Bajado un poco a 30 para que no tape el contenido útil en pantallas medianas
+    bottom: 75, // 👈 Ajustado a 75 para que no quede ni muy pegado abajo ni muy arriba
     alignSelf: "center",
     width: "90%",
     elevation: 8,
     // Sombras premium adaptadas para tu tema oscuro/azul
-    shadowColor: palette.darkBlue,
+    shadowColor: palette.black,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -83,13 +96,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: 50,
-    height: 40,
-  },
-  activeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: palette.darkBlue,
-    marginTop: 3,
+    height: 45,
   }
 });

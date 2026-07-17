@@ -1,37 +1,60 @@
-// CustomButton
-// Botón reutilizable para toda la app (Login, Registro, formularios, etc).
-// variant "primary" = botón sólido (ej. "Iniciar Sesión"), variant "secondary" = outline (ej. "Crear Cuenta").
-// Maneja su propio estado de loading mostrando un spinner en vez del texto.
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { palette } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function CustomButton({
   title,
   onPress,
-  variant = 'primary', // 'primary' | 'secondary'
+  variant = 'primary',
   loading = false,
   marginTop = 12,
   marginBottom = 16,
 }) {
+  const { tema } = useTheme();
+  
   const isPrimary = variant === 'primary';
+  
+  // COMPROBACIÓN DEFINITIVA: Basada en el cambio real del fondo
+  const esModoOscuro = tema.backgroundColor !== palette.white;
+
+  const primaryBgColor = esModoOscuro ? palette.darkYellow : palette.darkBlue;
+  const secondaryBorderColor = esModoOscuro ? palette.darkYellow : palette.darkBlue;
+
+  const primaryTextColor = esModoOscuro ? palette.black : palette.white;
+  // 🌟 CAMBIO: El texto del botón secundario en modo oscuro ahora es blanco
+  const secondaryTextColor = esModoOscuro ? palette.white : palette.darkBlue;
+
+  const spinnerColor = isPrimary ? primaryTextColor : secondaryTextColor;
 
   return (
     <TouchableOpacity
       style={[
         styles.btn,
-        isPrimary ? styles.btnPrimary : styles.btnSecondary,
+        isPrimary 
+          ? [styles.btnPrimary, { backgroundColor: primaryBgColor }] 
+          : [styles.btnSecondary, { borderColor: secondaryBorderColor }],
         loading && styles.btnDisabled,
-        { marginTop, marginBottom }
+        { 
+          marginTop, 
+          marginBottom,
+          shadowColor: esModoOscuro ? 'transparent' : palette.black,
+          elevation: esModoOscuro ? 0 : isPrimary ? 2 : 0,
+        }
       ]}
       onPress={onPress}
       disabled={loading}
       activeOpacity={isPrimary ? 0.8 : 0.7}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? palette.white : palette.darkBlue} />
+        <ActivityIndicator color={spinnerColor} />
       ) : (
-        <Text style={[styles.text, isPrimary ? styles.textPrimary : styles.textSecondary]}>
+        <Text 
+          style={[
+            styles.text, 
+            isPrimary ? { color: primaryTextColor } : { color: secondaryTextColor }
+          ]}
+        >
           {title}
         </Text>
       )}
@@ -49,9 +72,6 @@ const styles = StyleSheet.create({
     height: 50,
   },
   btnPrimary: {
-    backgroundColor: palette.darkBlue,
-    elevation: 2,
-    shadowColor: palette.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
@@ -59,7 +79,6 @@ const styles = StyleSheet.create({
   btnSecondary: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: palette.darkBlue,
   },
   btnDisabled: {
     opacity: 0.7,
@@ -67,11 +86,5 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 17,
     fontWeight: 'bold',
-  },
-  textPrimary: {
-    color: palette.white,
-  },
-  textSecondary: {
-    color: palette.darkBlue,
   },
 });

@@ -1,3 +1,4 @@
+// src/screens/auth/LoginScreen.js
 import React, { useState } from 'react';
 import { Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -8,17 +9,22 @@ import Separator from '../../components/common/Separator';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AuthLogo from '../../components/auth/AuthLogo';
 
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../theme/ThemeContext';
+
 import { authService } from '../../services/authService';
 import { userService } from '../../services/userService';
 
 export default function LoginScreen({ navigation }) {
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingRegister, setLoadingRegister] = useState(false);
 
   const handleLogin = async () => {
-    // 1. Validaciones básicas antes de enviar datos a Supabase
     if (!email.trim() || !password) {
       Alert.alert('⚠️ Campos incompletos', 'Por favor ingresa tu correo y contraseña para continuar.');
       return;
@@ -26,18 +32,15 @@ export default function LoginScreen({ navigation }) {
 
     setLoadingLogin(true);
     try {
-      // 2. Intentamos iniciar sesión en Supabase Auth
       const data = await authService.login(email.trim().toLowerCase(), password);
 
       if (data && data.user) {
-        // 3. Si el login es exitoso, buscamos el perfil del usuario
         const profile = await userService.getUserProfile(data.user.id);
 
         if (!profile) {
           throw new Error('No se encontró el perfil de usuario en el sistema.');
         }
 
-        // 4. Redirección inteligente según el rol
         if (profile.role === 'Propietario') {
           if (!profile.gym_id) {
             navigation.replace('GymSetup', { userId: data.user.id });
@@ -51,7 +54,6 @@ export default function LoginScreen({ navigation }) {
         }
       }
     } catch (error) {
-      // Traducimos el error común de credenciales de Supabase
       let mensajeAmigable = error.message;
       let tituloAlerta = '❌ Error al iniciar sesión';
 
@@ -66,35 +68,34 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  // 👇 Solo para PROBAR el LoadingOverlay mientras Register no esté listo
   const handleGoToRegister = () => {
     setLoadingRegister(true);
     setTimeout(() => {
       setLoadingRegister(false);
       navigation.navigate('Register');
-    }, 2000); // simula 2 segundos de "carga"
+    }, 2000);
   };
 
   const isLoading = loadingLogin || loadingRegister;
 
   return (
     <KeyboardAwareScrollView
-      style={styles.scroll}
+      // 🌟 El color de fondo de la pantalla se adapta dinámicamente aquí
+      style={[styles.scroll, { backgroundColor: tema.backgroundColor }]}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       enableOnAndroid={true}
       extraScrollHeight={21}
     >
-      {/* Logo es un componente */}
+      {/* El logo cambiará internamente entre LogoIcon o LogoIcon2 según el tema */}
       <AuthLogo />
 
-      <Text style={styles.subtitle}>¡Ingresa ahora mismo!</Text>
+      {/* 🌟 Color de texto adaptable */}
+      <Text style={[styles.subtitle, { color: tema.textColor }]}>¡Ingresa ahora mismo!</Text>
 
-      {/* Separador es un componente */}
       <Separator icon="account-key" />
 
-      {/* Input Correo es un componente */}
       <CustomAuthInput
         icon="email"
         placeholder="Ingrese su correo"
@@ -104,9 +105,9 @@ export default function LoginScreen({ navigation }) {
         keyboardType="email-address"
         marginBottom={4}
       />
-      <Text style={styles.hint}>Ejemplo: nombre@gmail.com</Text>
+      {/* 🌟 Texto de sugerencia adaptable */}
+      <Text style={[styles.hint, { color: tema.subTextColor }]}>Ejemplo: nombre@gmail.com</Text>
 
-      {/* Input Contraseña es un componente */}
       <CustomAuthInput
         icon="lock"
         placeholder="Ingrese contraseña"
@@ -115,9 +116,9 @@ export default function LoginScreen({ navigation }) {
         onChangeText={(text) => setPassword(text.replace(/\s/g, ''))}
         marginBottom={4}
       />
-      <Text style={styles.hint}>Debe tener al menos 6 caracteres</Text>
+      {/* 🌟 Texto de sugerencia adaptable */}
+      <Text style={[styles.hint, { color: tema.subTextColor }]}>Debe tener al menos 6 caracteres</Text>
 
-      {/* Botón Iniciar Sesión es un componente */}
       <CustomButton
         title="Iniciar Sesión"
         onPress={handleLogin}
@@ -127,7 +128,6 @@ export default function LoginScreen({ navigation }) {
         marginBottom={14}
       />
 
-      {/* Botón Crear Cuenta es un componente */}
       <CustomButton
         title="Crear Cuenta"
         onPress={handleGoToRegister}
@@ -137,12 +137,10 @@ export default function LoginScreen({ navigation }) {
         marginBottom={20}
       />
 
-      {/* Olvidé contraseña */}
       <TouchableOpacity onPress={() => navigation.navigate('Recover')} activeOpacity={0.6}>
         <Text style={styles.forgotPassword}>Olvidé mi contraseña</Text>
       </TouchableOpacity>
 
-      {/* Overlay de carga */}
       <LoadingOverlay visible={isLoading} message="Un momento, por favor espera..." />
     </KeyboardAwareScrollView>
   );
@@ -151,7 +149,6 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
-    backgroundColor: palette.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -163,12 +160,10 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: palette.darkBlue,
     marginBottom: 20,
   },
   hint: {
     fontSize: 12,
-    color: palette.mediumGray,
     alignSelf: 'flex-start',
     marginBottom: 14,
     marginLeft: 4,

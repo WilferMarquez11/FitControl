@@ -1,9 +1,8 @@
-// Componente reutilizable de input para pantallas de autenticación (Login, Register, Recover Password)
-// TextInput + ícono + estilos en cada pantalla de auth
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { palette } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function CustomAuthInput({
   icon,
@@ -13,21 +12,52 @@ export default function CustomAuthInput({
   secureTextEntry = false,
   isPassword = false,
   marginBottom = 14,
+  iconColor: customIconColor,
+  color: customColor,
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const { tema } = useTheme();
+
+  // COMPROBACIÓN DEFINITIVA: Si el fondo no es blanco o es el color oscuro, activamos modo oscuro
+  const esModoOscuro = tema.backgroundColor !== palette.white;
+
+  const inputBgColor = tema.cardBackground;
+  const inputBorderColor = tema.borderColor;
+  const textColor = tema.textColor;
+  const placeholderColor = esModoOscuro ? tema.subTextColor : palette.mediumGray;
+  
+  // Forzamos el amarillo si detecta que el fondo cambió
+  const finalIconColor = esModoOscuro ? palette.darkYellow : palette.darkBlue;
 
   return (
-    <View style={[styles.inputContainer, { marginBottom }]}>
-      <MaterialIcons name={icon} size={22} color={palette.darkBlue} style={styles.icon} />
+    <View 
+      style={[
+        styles.inputContainer, 
+        { 
+          backgroundColor: inputBgColor, 
+          borderColor: inputBorderColor,
+          marginBottom,
+          shadowColor: tema.backgroundColor,
+          elevation: esModoOscuro ? 0 : 1,
+        }
+      ]}
+    >
+      <MaterialIcons 
+        name={icon} 
+        size={22} 
+        color={finalIconColor} 
+        style={styles.icon} 
+      />
       
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: textColor }]}
         placeholder={placeholder}
-        placeholderTextColor={palette.mediumGray}
+        placeholderTextColor={placeholderColor}
         value={value}
         onChangeText={onChangeText}
         secureTextEntry={isPassword ? !showPassword : secureTextEntry}
+        keyboardAppearance={esModoOscuro ? 'dark' : 'light'}
         {...props}
       />
 
@@ -36,7 +66,7 @@ export default function CustomAuthInput({
           <MaterialIcons
             name={showPassword ? 'visibility' : 'visibility-off'}
             size={22}
-            color={palette.darkBlue}
+            color={finalIconColor}
           />
         </TouchableOpacity>
       )}
@@ -49,14 +79,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: palette.lightGray,
     borderRadius: 8,
     paddingHorizontal: 12,
     width: '100%',
     height: 50,
-    backgroundColor: palette.white,
-    elevation: 1,
-    shadowColor: palette.darkBlue,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 1,
@@ -65,7 +91,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: palette.black,
     height: '100%',
   },
 });

@@ -1,13 +1,22 @@
-// AuthLogo
-// Logo reutilizable para las pantallas de autenticación (Login, Register, Welcome, Recover).
-// Centraliza la ruta de la imagen y el tamaño, para no repetir el mismo <Image> en cada pantalla.
 import React from 'react';
 import { Image, StyleSheet } from 'react-native';
+import { palette } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function AuthLogo({ width = '100%', height = 150, marginBottom = 10 }) {
+  const { tema } = useTheme();
+
+  // COMPROBACIÓN DEFINITIVA: Si el fondo no es blanco, activamos modo oscuro
+  const esModoOscuro = tema.backgroundColor !== palette.white;
+
+  // Seleccionamos la imagen correcta para cada modo
+  const logoSource = esModoOscuro 
+    ? require('../../../assets/LogoIcon2.png') 
+    : require('../../../assets/LogoIcon.png');
+
   return (
     <Image
-      source={require('../../../assets/LogoIcon.png')}
+      source={logoSource}
       style={[styles.logo, { width, height, marginBottom }]}
       resizeMode="contain"
     />
@@ -16,6 +25,6 @@ export default function AuthLogo({ width = '100%', height = 150, marginBottom = 
 
 const styles = StyleSheet.create({
   logo: {
-    // el width/height/marginBottom se pasan por props para poder ajustarlos por pantalla
+    // Las dimensiones se aplican dinámicamente desde las props
   },
 });

@@ -14,42 +14,47 @@ function base64ToArrayBuffer(base64) {
 
 export const gymService = {
   /**
-   * Sube la imagen del logo al bucket de storage de Supabase 'gym_logos'
+   * Sube la imagen del logo al bucket de storage de Supabase 'GYM_LOGOS'
    * usando un formato compatible con React Native (ArrayBuffer).
    */
   async uploadGymLogo(userId, logo_uri) {
-    let fileExt = logo_uri.split('.').pop() || 'jpg';
-    fileExt = fileExt.toLowerCase(); // Forzar minúsculas para evitar fallos por extensiones en mayúscula (JPG, PNG)
-    
-    const fileName = `${userId}-${Date.now()}.${fileExt}`;
-    
-    // Leemos la ruta local como una cadena Base64
-    const base64Data = await FileSystem.readAsStringAsync(logo_uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    try {
+      let fileExt = logo_uri.split('.').pop() || 'jpg';
+      fileExt = fileExt.toLowerCase(); // Forzar minúsculas para evitar fallos por extensiones en mayúscula (JPG, PNG)
 
-    // Transformamos esos datos a un búfer binario que Supabase sí entiende
-    const arrayBuffer = base64ToArrayBuffer(base64Data);
+      const fileName = `${userId}-${Date.now()}.${fileExt}`;
 
-    // ── CORRECCIÓN DEL TIPO MIME ESTÁNDAR PARA EVITAR ERROR 400 ──
-    const mimeType = fileExt === 'jpg' || fileExt === 'jpeg' ? 'image/jpeg' : `image/${fileExt}`;
-
-    // Conectamos directamente con tu bucket 'gym_logos'
-    const { error: uploadError } = await supabase.storage
-      .from('gym_logos') 
-      .upload(fileName, arrayBuffer, { 
-        contentType: mimeType, // Enviamos el header correcto para que Supabase guarde bien el archivo
-        upsert: true 
+      // Leemos la ruta local como una cadena Base64
+      const base64Data = await FileSystem.readAsStringAsync(logo_uri, {
+        encoding: FileSystem.EncodingType.Base64,
       });
 
-    if (uploadError) throw uploadError;
+      // Transformamos esos datos a un búfer binario que Supabase sí entiende
+      const arrayBuffer = base64ToArrayBuffer(base64Data);
 
-    // Obtenemos la URL de internet definitiva de forma limpia
-    const { data: publicUrlData } = supabase.storage
-      .from('gym_logos')
-      .getPublicUrl(fileName);
+      // Corrección del tipo MIME estándar para evitar Error 400
+      const mimeType = fileExt === 'jpg' || fileExt === 'jpeg' ? 'image/jpeg' : `image/${fileExt}`;
 
-    return publicUrlData.publicUrl;
+      // ⚡ CORREGIDO: Conectamos directamente con el nombre exacto de tu bucket 'GYM_LOGOS'
+      const { error: uploadError } = await supabase.storage
+        .from('gym_logos')
+        .upload(fileName, arrayBuffer, {
+          contentType: mimeType, // Enviamos el header correcto para que Supabase guarde bien el archivo
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // ⚡ CORREGIDO: Obtenemos la URL de internet definitiva apuntando al bucket correcto
+      const { data: publicUrlData } = supabase.storage
+        .from('gym_logos')
+        .getPublicUrl(fileName);
+
+      return publicUrlData.publicUrl;
+    } catch (error) {
+      console.error("❌ Error en uploadGymLogo:", error.message);
+      throw error;
+    }
   },
 
   /**
@@ -109,7 +114,8 @@ export const gymService = {
             country,
             state,
             city,
-            routine_price
+            routine_price,
+            address
           )
         `)
         .eq('id', userId)
@@ -117,11 +123,9 @@ export const gymService = {
 
       if (error) throw error;
 
-      // 🚨 BLINDAJE DE FORMATO: 
-      // Supabase a veces retorna la relación como un Array (si hay políticas genéricas)
-      // o como un Objeto directo. Nos aseguramos de devolver siempre un objeto plano.
+      // Blindaje de formato para relaciones de Supabase
       let gymData = data?.gyms;
-      
+
       if (Array.isArray(gymData)) {
         gymData = gymData[0];
       }
@@ -132,6 +136,65 @@ export const gymService = {
     } catch (error) {
       console.error('Error en getGymByOwner:', error.message);
       return null;
+    }
+  },
+
+  /**
+   * Actualiza el logo del gimnasio existente y borra el anterior del storage
+   */
+  async updateGymLogo(gymId, userId, logoUri) {
+    try {
+      if (!logoUri) throw new Error("No se proporcionó una ruta de imagen válida.");
+
+      // 1. Obtener los datos actuales del gimnasio para saber si ya tenía un logo previo
+      const { data: gym, error: fetchError } = await supabase
+        .from('gyms')
+        .select('logo_url')
+        .eq('id', gymId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Si ya tenía un logo, extraemos su nombre y lo borramos del Storage
+      if (gym && gym.logo_url) {
+        try {
+          // Extraemos de forma segura el nombre del archivo limpiando parámetros de URL si existen
+          const urlParts = gym.logo_url.split('/');
+          const oldFileName = urlParts[urlParts.length - 1].split('?')[0];
+          
+          if (oldFileName) {
+            console.log("🧹 Intentando borrar archivo del Storage:", oldFileName);
+            
+            const { data: deleteData, error: deleteError } = await supabase.storage
+              .from('gym_logos')
+              .remove([oldFileName]);
+
+            if (deleteError) {
+              console.error("⚠️ Supabase rechazó el borrado:", deleteError.message);
+            } else {
+              console.log("✅ Archivo antiguo borrado con éxito del Storage:", deleteData);
+            }
+          }
+        } catch (deleteError) {
+          console.warn("⚠️ Error en el proceso de borrado:", deleteError.message);
+        }
+      }
+
+      // 3. Subir la nueva imagen al storage
+      const newLogoUrl = await this.uploadGymLogo(userId, logoUri);
+
+      // 4. Actualizar la tabla 'gyms' con la nueva URL pública obtenida
+      const { error: updateError } = await supabase
+        .from('gyms')
+        .update({ logo_url: newLogoUrl })
+        .eq('id', gymId);
+
+      if (updateError) throw updateError;
+
+      return newLogoUrl; 
+    } catch (error) {
+      console.error("❌ Error en gymService.updateGymLogo:", error.message);
+      throw error;
     }
   }
 };

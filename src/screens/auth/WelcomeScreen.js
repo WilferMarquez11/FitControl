@@ -1,10 +1,25 @@
+// src/screens/auth/WelcomeScreen.js
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Image, Text, Animated, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, Animated, ActivityIndicator } from 'react-native';
 import { palette } from "../../theme/colors";
 
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../theme/ThemeContext';
+
 export default function WelcomeScreen({ navigation }) {
+  const { tema } = useTheme();
+  
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
+
+  // Comprobación definitiva basada en el fondo real
+  const esModoOscuro = tema.backgroundColor !== palette.white;
+  const themeKey = esModoOscuro ? 'dark' : 'light';
+
+  // Selección del logo según el modo
+  const logoSource = esModoOscuro
+    ? require('../../../assets/2LogoPrincipal.png') // 👈 Logo para modo oscuro
+    : require('../../../assets/1LogoPrincipal.png'); // 👈 Logo para modo claro
 
   useEffect(() => {
     Animated.parallel([
@@ -14,23 +29,29 @@ export default function WelcomeScreen({ navigation }) {
 
     const timer = setTimeout(() => {
       navigation.replace("Login");
-    }, 4000);
+    }, 4000); // 4 segundos antes de navegar a la pantalla de Login
     return () => clearTimeout(timer);
   }, [navigation]);
 
   return (
-    <View style={styles.container}>
+    <View key={`welcome-${themeKey}`} style={[styles.container, { backgroundColor: tema.backgroundColor }]}>
       <View style={styles.logoContainer}>
         <Animated.Image
-          source={require('../../../assets/1LogoPrincipal.png')}
+          source={logoSource}
           style={[styles.logoImage, { opacity, transform: [{ scale }] }]}
           resizeMode="contain"
         />
         <ActivityIndicator size="large" color={palette.darkYellow} style={styles.spinner} />
-        <Text style={styles.loadingText}>Cargando tu experiencia...</Text>
+        
+        {/* 🌟 Color de texto adaptable */}
+        <Text style={[styles.loadingText, { color: tema.textColor }]}>
+          Cargando tu experiencia...
+        </Text>
       </View>
+      
       <View style={styles.footer}>
-        <Text style={styles.byText}>By</Text>
+        {/* 🌟 Color de texto adaptable */}
+        <Text style={[styles.byText, { color: tema.subTextColor }]}>By</Text>
         <Text style={styles.companyText}>WO Devs</Text>
       </View>
     </View>
@@ -42,7 +63,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: palette.white,
   },
   logoContainer: {
     flex: 1,
@@ -59,7 +79,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 20,
     fontSize: 14,
-    color: palette.darkBlue,
   },
   footer: {
     marginBottom: 100,
@@ -67,7 +86,6 @@ const styles = StyleSheet.create({
   },
   byText: {
     fontSize: 16,
-    color: palette.darkBlue,
   },
   companyText: {
     fontSize: 20,

@@ -1,18 +1,30 @@
-// LoadingOverlay
-// Modal de carga a pantalla completa con fondo semi-transparente, spinner centrado
-// y un mensaje debajo (ej. "Creando tu cuenta, por favor espera..."). Se usa mientras
-// se espera una respuesta async (Supabase, fetch, etc.) para bloquear la interacción del usuario.
+// src/components/common/LoadingOverlay.js
 import React from 'react';
 import { Modal, View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { palette } from '../../theme/colors';
 
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../theme/ThemeContext';
+
 export default function LoadingOverlay({ visible, message = 'Cargando, por favor espera...' }) {
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
-        <View style={styles.card}>
-          <ActivityIndicator size="large" color={palette.darkBlue} />
-          <Text style={styles.message}>{message}</Text>
+        {/* La tarjeta de carga se adapta al tema actual */}
+        <View style={[
+          styles.card, 
+          { backgroundColor: tema.cardBackground, borderColor: tema.borderColor }
+        ]}>
+          {/* El spinner ahora usa tu color amarillo característico para que resalte */}
+          <ActivityIndicator size="large" color={palette.darkYellow} />
+          
+          {/* El mensaje cambia de color según el tema */}
+          <Text style={[styles.message, { color: tema.textColor }]}>
+            {message}
+          </Text>
         </View>
       </View>
     </Modal>
@@ -22,17 +34,17 @@ export default function LoadingOverlay({ visible, message = 'Cargando, por favor
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: palette.overlay,
+    backgroundColor: palette.overlay, // Mantiene el fondo oscurecido para bloquear la pantalla
     justifyContent: 'center',
     alignItems: 'center',
   },
   card: {
-    backgroundColor: palette.white,
     borderRadius: 12,
     paddingVertical: 28,
     paddingHorizontal: 32,
     alignItems: 'center',
     minWidth: 220,
+    borderWidth: 1, // Añadido borde sutil para que se distinga bien en modo oscuro
     elevation: 4,
     shadowColor: palette.black,
     shadowOffset: { width: 0, height: 2 },
@@ -42,7 +54,6 @@ const styles = StyleSheet.create({
   message: {
     marginTop: 14,
     fontSize: 14,
-    color: palette.darkBlue,
     textAlign: 'center',
     fontWeight: '500',
   },

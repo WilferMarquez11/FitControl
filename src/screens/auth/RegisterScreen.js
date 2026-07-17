@@ -1,22 +1,32 @@
+// src/screens/auth/RegisterScreen.js
 import React, { useState } from 'react';
-import { Text, TouchableOpacity, StyleSheet, Alert } from 'react-native'; // 👈 Añadimos Alert
+import { Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { palette } from '../../theme/colors';
 import CustomAuthInput from '../../components/auth/CustomAuthInput';
 import CustomButton from '../../components/auth/CustomButton';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AuthLogo from '../../components/auth/AuthLogo';
-import { authService } from '../../services/authService'; // 👈 Importamos tu servicio de Supabase
+
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../theme/ThemeContext';
+import { authService } from '../../services/authService';
 
 export default function RegisterScreen({ navigation }) {
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
+
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Comprobación definitiva del modo oscuro basada en el fondo
+  const esModoOscuro = tema.backgroundColor !== palette.white;
+  const themeKey = esModoOscuro ? 'dark' : 'light';
+
   const handleRegister = async () => {
-    // 1. Validaciones básicas iniciales
     if (!nombre || !email || !password || !confirmPassword) {
       Alert.alert('⚠️ Campos incompletos', 'Por favor llena todos los campos requeridos para crear tu cuenta.');
       return;
@@ -32,12 +42,9 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
-    // 2. Conexión con Supabase Auth
     setLoading(true);
     try {
-      // 🚨 CAMBIO CLAVE: Cambia registerOwnerAuthOnly por registerOwner
       const data = await authService.registerOwner(email, password, nombre);
-
       setLoading(false);
 
       if (data && data.user) {
@@ -51,10 +58,8 @@ export default function RegisterScreen({ navigation }) {
       }
 
     } catch (error) {
-
       setLoading(false);
       
-      // Traducimos el error común de usuario existente si Supabase lo arroja
       let mensajeAmigable = error.message;
       let tituloAlerta = '❌ Error al registrar';
 
@@ -69,20 +74,25 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <KeyboardAwareScrollView
-      style={styles.scroll}
+      // 🌟 Color de fondo adaptable
+      style={[styles.scroll, { backgroundColor: tema.backgroundColor }]}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       enableOnAndroid={true}
       extraScrollHeight={20}
     >
-      <AuthLogo />
+      <AuthLogo key={`logo-${themeKey}`} />
 
-      <Text style={styles.subtitle}>¡Crea tu cuenta ahora mismo!</Text>
+      {/* 🌟 Título adaptable */}
+      <Text style={[styles.subtitle, { color: tema.textColor }]}>
+        ¡Crea tu cuenta ahora mismo!
+      </Text>
 
       {/* Nombre Completo */}
-      <Text style={styles.label}>Nombre Completo</Text>
+      <Text style={[styles.label, { color: tema.textColor }]}>Nombre Completo</Text>
       <CustomAuthInput
+        key={`reg-nombre-${themeKey}`}
         icon="person"
         placeholder="Ejemplo: JUAN PEREZ"
         value={nombre}
@@ -91,8 +101,9 @@ export default function RegisterScreen({ navigation }) {
       />
 
       {/* Correo Electrónico */}
-      <Text style={styles.label}>Correo Electrónico</Text>
+      <Text style={[styles.label, { color: tema.textColor }]}>Correo Electrónico</Text>
       <CustomAuthInput
+        key={`reg-email-${themeKey}`}
         icon="email"
         placeholder="Ejemplo: nombre@gmail.com"
         value={email}
@@ -102,8 +113,9 @@ export default function RegisterScreen({ navigation }) {
       />
 
       {/* Contraseña */}
-      <Text style={styles.label}>Contraseña</Text>
+      <Text style={[styles.label, { color: tema.textColor }]}>Contraseña</Text>
       <CustomAuthInput
+        key={`reg-pass-${themeKey}`}
         icon="lock"
         placeholder="Mínimo 6 caracteres (sin espacios)"
         value={password}
@@ -112,8 +124,9 @@ export default function RegisterScreen({ navigation }) {
       />
 
       {/* Confirmar Contraseña */}
-      <Text style={styles.label}>Confirmar Contraseña</Text>
+      <Text style={[styles.label, { color: tema.textColor }]}>Confirmar Contraseña</Text>
       <CustomAuthInput
+        key={`reg-confpass-${themeKey}`}
         icon="lock-outline"
         placeholder="Repite tu contraseña"
         value={confirmPassword}
@@ -123,6 +136,7 @@ export default function RegisterScreen({ navigation }) {
 
       {/* Botón Crear Cuenta */}
       <CustomButton
+        key={`reg-btn-${themeKey}`}
         title="Crear Cuenta"
         onPress={handleRegister}
         variant="primary"
@@ -145,7 +159,6 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
-    backgroundColor: palette.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -157,14 +170,12 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: palette.darkBlue,
     marginBottom: 20,
     textAlign: 'center',
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: palette.black,
     alignSelf: 'flex-start',
     marginBottom: 6,
     marginLeft: 2,

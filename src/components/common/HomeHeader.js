@@ -1,95 +1,70 @@
 // src/components/common/HomeHeader.js
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { palette } from '../../theme/colors';
+import { palette } from '../../theme/colors'; 
+
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function HomeHeader({
   nombreUsuario = 'Usuario',
   logoUrl = null,
-  onLogout,
   onNotificationPress,
+  onPressProfile, // 👈 Recibimos la función desde el PanelOwnerScreen
 }) {
-  const [cachedLogoUrl, setCachedLogoUrl] = useState(logoUrl);
-
-  useEffect(() => {
-    // Si la URL cambia en las props, actualizamos el estado local
-    setCachedLogoUrl(logoUrl);
-  }, [logoUrl]);
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
 
   const nombreLimpio = nombreUsuario && nombreUsuario.trim() ? nombreUsuario.toUpperCase() : 'USUARIO';
   const primeraLetra = nombreLimpio.charAt(0).toUpperCase();
-
-  // Comprobación estricta de que tengamos una URL válida
-  const tieneLogoValido = cachedLogoUrl && typeof cachedLogoUrl === 'string' && cachedLogoUrl.trim() !== '';
-
-  // Limpiamos cualquier query string anterior que pudiera venir en la URL para evitar el error 400
-  const cleanLogoUrl = tieneLogoValido ? cachedLogoUrl.split('?')[0] : null;
+  const tieneLogoValido = logoUrl && typeof logoUrl === 'string' && logoUrl.trim() !== '';
 
   return (
     <View style={styles.outerContainer}>
-      <View style={styles.headerContainer}>
-
-        {/* ── SECCIÓN IZQUIERDA: AVATAR/LOGO Y TEXTO ── */}
-        <View style={styles.headerLeft}>
+      {/* Tarjeta contenedora adaptativa */}
+      <View style={[
+        styles.headerContainer, 
+        { backgroundColor: tema.cardBackground, borderColor: tema.borderColor }
+      ]}>
+        
+        {/* TOQUE EN EL PERFIL (IZQUIERDA) */}
+        <TouchableOpacity 
+          style={styles.headerLeft} 
+          activeOpacity={0.7}
+          onPress={onPressProfile} // 👈 Al tocar el nombre o avatar ejecuta la navegación
+        >
           {tieneLogoValido ? (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                // Forzar recarga de la imagen sumando un hash limpio si falla
-                if (cleanLogoUrl) {
-                  setCachedLogoUrl(`${cleanLogoUrl}?v=${Date.now()}`);
-                }
-              }}
-            >
-              <Image
-                source={{
-                  uri: cleanLogoUrl,
-                  headers: {
-                    'Accept': 'image/png,image/*;q=0.8,*/*;q=0.5',
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
-                  }
-                }}
-                style={styles.logoImage}
-                resizeMode="cover"
-                fadeDuration={0}
-                onError={(e) => {
-                  console.log("❌ Error cargando imagen en el Header:", e.nativeEvent.error);
-                  console.log("🔗 URL fallida:", cleanLogoUrl);
-                }}
-              />
-            </TouchableOpacity>
+            <Image 
+              source={{ uri: logoUrl }} 
+              style={[styles.logoImage, { backgroundColor: tema.borderColor }]} 
+              resizeMode="cover"
+              fadeDuration={0}
+              onError={(e) => console.log("❌ Error cargando imagen en el Header:", e.nativeEvent.error)}
+            />
           ) : (
+            // Círculo de avatar consistente con el color de tu marca (verde)
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarLetter}>{primeraLetra}</Text>
             </View>
           )}
           <View style={styles.textContainer}>
-            <Text style={styles.welcomeText}>¡Bienvenido!</Text>
-            <Text style={styles.nombreText} numberOfLines={1}>
+            <Text style={[styles.welcomeText, { color: tema.subTextColor }]}>¡Bienvenido!</Text>
+            <Text style={[styles.nombreText, { color: tema.textColor }]} numberOfLines={1}>
               {nombreLimpio}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
-        {/* ── SECCIÓN DERECHA: BOTONES DE ACCIÓN ── */}
+        {/* SECCIÓN DERECHA: NOTIFICACIONES */}
         <View style={styles.headerIcons}>
-          {/* Campana de Notificaciones */}
-          <TouchableOpacity
-            style={styles.iconButton}
+          <TouchableOpacity 
+            style={styles.iconButton} 
             onPress={onNotificationPress}
             activeOpacity={0.6}
           >
-            <MaterialCommunityIcons name="bell-outline" size={24} color={palette.darkGreen} />
-          </TouchableOpacity>
-
-          {/* Botón Salir */}
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={onLogout}
-            activeOpacity={0.6}
-          >
-            <MaterialCommunityIcons name="logout" size={24} color={palette.red} />
+            {/* Icono de campana en color amarillo para que resalte */}
+            <MaterialCommunityIcons name="bell-outline" size={24} color={palette.darkYellow} />
           </TouchableOpacity>
         </View>
 
@@ -102,7 +77,7 @@ const styles = StyleSheet.create({
   outerContainer: {
     backgroundColor: 'transparent',
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: 50, 
     paddingBottom: 10,
     width: '100%',
   },
@@ -110,12 +85,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: palette.white,
-    borderRadius: 20,
+    borderRadius: 20, 
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: palette.lightGrayInput,
     elevation: 3,
     shadowColor: palette.black,
     shadowOffset: { width: 0, height: 2 },
@@ -131,7 +104,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: palette.darkGreen,
+    backgroundColor: palette.white, // Ajustado a verde como el ProfileAvatarHeader
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -144,23 +117,21 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: palette.lightGrayInput,
     overflow: 'hidden',
   },
   textContainer: {
     marginLeft: 12,
     justifyContent: 'center',
+    flex: 1,
   },
   welcomeText: {
     fontSize: 11,
-    color: palette.mediumGray,
     fontWeight: '500',
     marginBottom: 2,
   },
   nombreText: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: palette.darkGreen,
   },
   headerIcons: {
     flexDirection: 'row',
