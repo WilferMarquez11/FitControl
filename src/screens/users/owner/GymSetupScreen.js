@@ -1,7 +1,7 @@
+// src/screens/users/owner/GymSetupScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { palette } from '../../../theme/colors';
 
 // Importación de servicios y del JSON dinámico en assets
@@ -17,10 +17,15 @@ import FormButtons from '../../../components/forms/FormButtons';
 import CurrencyInput from '../../../components/forms/CurrencyInput';
 import FormImagePicker from '../../../components/forms/FormImagePicker';
 import LoadingOverlay from '../../../components/common/LoadingOverlay';
+import ScreenHeader from '../../../components/common/ScreenHeader'; // 🌟 Tu nuevo header común
 
-
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../../theme/ThemeContext';
 
 export default function GymSetupScreen({ navigation, route }) {
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
+
   // Extraemos el ID del usuario enviado desde la pantalla de Register
   const { userId } = route.params || {};
 
@@ -41,7 +46,11 @@ export default function GymSetupScreen({ navigation, route }) {
   const [departmentsList, setDepartmentsList] = useState([]);
   const [citiesList, setCitiesList] = useState([]); 
 
-    // Carga inicial de departamentos al abrir la pantalla
+  // Variables dinámicas para el control de re-renderizado por tema
+  const esModoOscuro = tema.backgroundColor !== palette.white;
+  const themeKey = esModoOscuro ? 'dark' : 'light';
+
+  // Carga inicial de departamentos al abrir la pantalla
   useEffect(() => {
     const mappedDepartments = colombiaData.map((dept) => ({
       label: dept.departamento,
@@ -79,37 +88,44 @@ export default function GymSetupScreen({ navigation, route }) {
    */
   const handleCreateGym = async () => {
     // 💡 Limpiamos espacios antes de validar
-    const cleanedGymName = gym_name.trim();
+    const cleanedGymName = gym_name ? gym_name.trim() : '';
+    const cleanedState = state ? state.trim() : '';
+    const cleanedCity = city ? city.trim() : '';
 
     // 🚨 Convertimos el string formateado "20.000" a número limpio para la BD: 20000
     const rawPrice = parseToRawNumber(routine_price);
 
+    // 🔍 LOG TEMPORAL: Revisa tu terminal de Expo para ver cuál de estos llega vacío o en 0
+    console.log("=== AUDITORÍA DE DATOS ANTES DE VALIDAR ===");
+    console.log("Nombre gimnasio:", `"${cleanedGymName}"`);
+    console.log("País:", `"${country}"`);
+    console.log("Departamento (state):", `"${cleanedState}"`);
+    console.log("Ciudad (city):", `"${cleanedCity}"`);
+    console.log("Precio formateado:", `"${routine_price}"`);
+    console.log("Precio limpio (rawPrice):", rawPrice, typeof rawPrice);
+    console.log("===========================================");
+
     // Validamos los campos obligatorios usando las variables ya limpias
-    if (!cleanedGymName || !country || !state || !city || rawPrice <= 0) {
+    if (!cleanedGymName || !country || !cleanedState || !cleanedCity || isNaN(rawPrice) || rawPrice <= 0) {
       Alert.alert('⚠️ Campos incompletos', 'Por favor completa todos los campos requeridos (*) y define un precio de rutina válido.');
       return;
     }
 
     setLoading(true);
     try {
-      // Mandamos las variables directo al servicio (el servicio se encargará del ArrayBuffer y del Storage)
       await gymService.createGymAndLinkUser({
         userId,
         gym_name: cleanedGymName,
         country,
-        state,
-        city,
-        routine_price: rawPrice, // 🚨 Pasamos el número limpio (Float/Int)
-        // 🚨 Enviamos la dirección formateada de forma segura (si no hay, mandamos null)
+        state: cleanedState,
+        city: cleanedCity,
+        routine_price: rawPrice, 
         address: address ? address.trim() : null,
-        logo_uri, // El URI de la imagen seleccionada temporalmente
+        logo_uri, 
       });
 
       setLoading(false);
-
-      // Alerta de éxito con su respectivo emoji
       Alert.alert('🎉 ¡Gimnasio creado!', 'Tu gimnasio se ha registrado exitosamente.');
-
       navigation.replace('PanelOwner');
 
     } catch (error) {
@@ -117,7 +133,6 @@ export default function GymSetupScreen({ navigation, route }) {
       Alert.alert('❌ Error', error.message || 'Ocurrió un error inesperado al registrar el gimnasio.');
     }
   };
-
   /**
    * CANCELAR ACCIÓN
    */
@@ -132,19 +147,13 @@ export default function GymSetupScreen({ navigation, route }) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* ── HEADER ── */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Configura tu gimnasio</Text>
-      </View>
-
-      {/* ── ÍCONO ── */}
-      <View style={styles.iconContainer}>
-        <MaterialCommunityIcons name="office-building" size={56} color={palette.darkBlue} />
-      </View>
+    <View style={[styles.container, { backgroundColor: tema.backgroundColor }]}>
+      {/* ── 🌟 HEADER REUTILIZABLE (Sin flecha de retroceso para evitar volver al registro) ── */}
+      <ScreenHeader title="Configura tu gimnasio" showBackButton={false} />
 
       {/* ── FORMULARIO ── */}
       <KeyboardAwareScrollView
+        key={`gym-setup-${themeKey}`}
         contentContainerStyle={styles.formContainer}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -231,23 +240,9 @@ export default function GymSetupScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.white,
-  },
-  header: {
-    paddingTop: 55,
-    paddingBottom: 10,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: palette.darkBlue,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    marginBottom: 10,
   },
   formContainer: {
     paddingHorizontal: 25,
+    paddingTop: 10,
   },
 });

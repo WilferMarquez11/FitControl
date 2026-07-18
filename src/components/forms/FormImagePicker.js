@@ -1,4 +1,4 @@
-// FormImagePicker
+// src/components/forms/FormImagePicker.js
 // Selector de imagen para formularios (ej. logo_url del gym, foto de perfil,
 // evidencia de pago). Muestra un placeholder o la vista previa de la imagen
 // seleccionada, y abre la galería del dispositivo al presionar.
@@ -8,6 +8,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import { palette } from '../../theme/colors';
 
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../theme/ThemeContext';
+
 export default function FormImagePicker({
   label,
   required = false,
@@ -16,6 +19,23 @@ export default function FormImagePicker({
   onChange,
   size = 120,
 }) {
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
+
+  // COMPROBACIÓN DEFINITIVA: Si el fondo no es blanco, activamos modo oscuro
+  const esModoOscuro = tema.backgroundColor !== palette.white;
+
+  // Configuración dinámica de colores basados en el tema
+  const labelColor = tema.textColor || palette.darkBlue;
+  const placeholderColor = esModoOscuro ? tema.subTextColor : palette.mediumGray;
+  
+  const containerBgColor = esModoOscuro 
+    ? (tema.inputBackground || tema.cardBackground) 
+    : palette.lightGrayInput;
+    
+  const containerBorderColor = tema.borderColor || palette.lightGray;
+  const iconColor = esModoOscuro ? palette.darkYellow : palette.mediumGray;
+
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -36,15 +56,24 @@ export default function FormImagePicker({
   };
 
   return (
-    <>
-      <Text style={styles.label}>
+    <View style={styles.mainContainer}>
+      <Text style={[styles.label, { color: labelColor }]}>
         {label}
         {required && <Text style={styles.requerido}> *</Text>}
-        {optional && <Text style={styles.opcional}> (opcional)</Text>}
+        {optional && <Text style={[styles.opcional, { color: placeholderColor }]}> (opcional)</Text>}
       </Text>
 
       <TouchableOpacity
-        style={[styles.container, { width: size, height: size, borderRadius: size / 2 }]}
+        style={[
+          styles.container, 
+          { 
+            width: size, 
+            height: size, 
+            borderRadius: size / 2,
+            backgroundColor: containerBgColor,
+            borderColor: containerBorderColor,
+          }
+        ]}
         onPress={pickImage}
         activeOpacity={0.7}
       >
@@ -52,22 +81,24 @@ export default function FormImagePicker({
           <Image source={{ uri: value }} style={[styles.image, { borderRadius: size / 2 }]} />
         ) : (
           <View style={styles.placeholder}>
-            <MaterialIcons name="add-a-photo" size={28} color={palette.mediumGray} />
-            <Text style={styles.placeholderText}>Agregar</Text>
+            <MaterialIcons name="add-a-photo" size={28} color={iconColor} />
+            <Text style={[styles.placeholderText, { color: placeholderColor }]}>Agregar</Text>
           </View>
         )}
       </TouchableOpacity>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  mainContainer: {
+    width: '100%',
+    marginTop: 10,
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: palette.darkBlue,
     marginBottom: 6,
-    marginTop: 10,
   },
   requerido: {
     color: palette.red,
@@ -75,16 +106,14 @@ const styles = StyleSheet.create({
   opcional: {
     fontSize: 12,
     fontWeight: '400',
-    color: palette.mediumGray,
   },
   container: {
     alignSelf: 'center',
-    backgroundColor: palette.lightGrayInput,
     borderWidth: 1,
-    borderColor: palette.lightGray,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    marginTop: 10,
   },
   image: {
     width: '100%',
@@ -96,7 +125,7 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 12,
-    color: palette.mediumGray,
+    fontWeight: '500',
     marginTop: 4,
   },
 });

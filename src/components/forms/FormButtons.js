@@ -1,9 +1,12 @@
-// FormButtons
+// src/components/forms/FormButtons.js
 // Par de botones (Guardar/Cancelar) para el pie de formularios, ej. GymSetupScreen
 // y cualquier otro formulario con acción de guardar + acción de cancelar/volver.
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { palette } from '../../theme/colors';
+
+// 🌟 Importamos el hook del tema
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function FormButtons({
   onSave,
@@ -11,22 +14,42 @@ export default function FormButtons({
   saveText = 'Registrar',
   cancelText = 'Cancelar',
 }) {
+  // 🌟 Consumimos el tema activo
+  const { tema } = useTheme();
+
+  // COMPROBACIÓN DEFINITIVA: Si el fondo no es blanco, activamos modo oscuro
+  const esModoOscuro = tema.backgroundColor !== palette.white;
+
+  // Colores dinámicos del botón de guardar según el modo
+  const saveBgColor = esModoOscuro ? palette.darkYellow : palette.darkBlue;
+  const saveTextColor = esModoOscuro ? palette.black : palette.white;
+
   return (
-    <View>
-      <TouchableOpacity style={styles.btnSave} onPress={onSave}>
-        <Text style={styles.btnText}>{saveText}</Text>
+    <View style={styles.container}>
+      <TouchableOpacity 
+        style={[styles.btnSave, { backgroundColor: saveBgColor }]} 
+        onPress={onSave}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.btnText, { color: saveTextColor }]}>{saveText}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btnCancel} onPress={onCancel}>
-        <Text style={styles.btnText}>{cancelText}</Text>
+      <TouchableOpacity 
+        style={styles.btnCancel} 
+        onPress={onCancel}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.btnText, { color: palette.white }]}>{cancelText}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+  },
   btnSave: {
-    backgroundColor: palette.darkBlue,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
@@ -40,7 +63,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   btnText: {
-    color: palette.white,
     fontSize: 16,
     fontWeight: 'bold',
   },

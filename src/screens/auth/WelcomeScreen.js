@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Text, Animated, ActivityIndicator } from 'react-native';
 import { palette } from "../../theme/colors";
+import { supabase } from '../../lib/supabase/supabaseConfig'; // 🌟 Conectamos con tu configuración nativa
 
 // 🌟 Importamos el hook del tema
 import { useTheme } from '../../theme/ThemeContext';
@@ -22,15 +23,41 @@ export default function WelcomeScreen({ navigation }) {
     : require('../../../assets/1LogoPrincipal.png'); // 👈 Logo para modo claro
 
   useEffect(() => {
+    // Iniciamos las animaciones de entrada del Logo
     Animated.parallel([
       Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(scale, { toValue: 1, friction: 6, useNativeDriver: true }),
     ]).start();
 
-    const timer = setTimeout(() => {
-      navigation.replace("Login");
-    }, 4000); // 4 segundos antes de navegar a la pantalla de Login
-    return () => clearTimeout(timer);
+    // Función que evalúa la persistencia nativa de Supabase
+    const evaluarSesionNativa = async () => {
+      try {
+        // 🌟 Leemos la sesión guardada automáticamente por tu cliente de Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+
+        // Esperamos que se cumplan los 4 segundos requeridos de la animación visual
+        setTimeout(() => {
+          if (session?.user) {
+            // 🌟 SI EL USUARIO NO CERRÓ SESIÓN: Salta directo al Panel
+            console.log("➡️ Sesión persistente detectada del usuario:", session.user.id);
+            navigation.replace('PanelOwner');
+          } else {
+            // 🌟 SI NO HAY SESIÓN / PRIMERA VEZ: Lo envía a loguearse
+            console.log("➡️ No hay sesión previa. Redirigiendo a Login.");
+            navigation.replace('Login');
+          }
+        }, 4000);
+
+      } catch (error) {
+        console.error('Error evaluando la sesión en el Welcome:', error);
+        // Si algo raro ocurre en el dispositivo, por seguridad va a Login al expirar el tiempo
+        setTimeout(() => {
+          navigation.replace('Login');
+        }, 4000);
+      }
+    };
+
+    evaluarSesionNativa();
   }, [navigation]);
 
   return (
