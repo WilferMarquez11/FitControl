@@ -5,13 +5,28 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/LogoIcon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "scheme": "fitcontrol",
+    "splash": {
+      "image": "./assets/LogoIcon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF",
+      "dark": {
+        "image": "./assets/LogoIcon2.png",
+        "backgroundColor": "#23252E" 
+      }
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "package": "com.wilfermarquez11.FitControl"
+      "package": "com.wilfermarquez11.FitControl",
+      "backgroundColor": "#FFFFFF",
+
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/LogoIcon.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
